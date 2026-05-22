@@ -21,16 +21,15 @@ def calculate_rsi(prices, period=14):
     return rsi.iloc[-1]
 
 def get_on_demand_signal(user_input):
-    # Standardize input
-    coin = user_input.strip().upper()
+    # Har tarah ke single quote, double quote aur spaces ko jad se saaf karne ka hacker ilaaj:
+    coin = user_input.strip().replace("'", "").replace('"', '').replace("`", "").upper()
     
-    # Special Handling for Gold and Silver proxies on Binance
+    # Special Handling for Gold and Silver
     if coin in ['XAUUSD', 'GOLD', 'PAXG']:
         symbol = 'PAXGUSDT'
     elif coin in ['XAGUSD', 'SILVER']:
         symbol = 'XAGUSDT'
     else:
-        # Agar user sirf 'BTC' likhe ya 'BTCUSDT', dono ko automatic format karega
         if not coin.endswith('USDT'):
             symbol = f"{coin}USDT"
         else:
@@ -40,7 +39,6 @@ def get_on_demand_signal(user_input):
     
     try:
         response = requests.get(klines_url)
-        # Agar coin ka naam galat hoga toh Binance error dega
         if response.status_code != 200:
             return f"❌ Sahil bhai, Binance par '{symbol}' naam ka koi token nahi mila. Ek baar spelling check karo!"
             
@@ -49,7 +47,6 @@ def get_on_demand_signal(user_input):
         current_price = close_prices[-1]
         rsi_val = calculate_rsi(close_prices)
         
-        # Strategy Logic
         if rsi_val <= 35:
             advice = "🟩 **BUY / LONG ZONE**\n⚡ Market ekdum sasta hai, dubki lagane ka best time hai!"
         elif rsi_val >= 65:
@@ -88,13 +85,17 @@ while True:
                     chat_id = update["message"]["chat"]["id"]
                     user_msg = update["message"]["text"].strip()
                     
+                    # Agar Telegram ki default start command hai toh skip karo
+                    if user_msg.lower() == '/start':
+                        reply_to_telegram(chat_id, "👋 Sahil bhai! Welcome to your AI Trading Desk. Jis bhi asset ka signal chahiye, bas uska naam likh kar bhejo.\n👉 **Options:** btc, eth, sol, xauusd, bnb, wagera...")
+                        continue
+                    
                     print(f"\n📥 Sahil asked for: {user_msg}")
                     
-                    reply_to_telegram(chat_id, f"⏳ {user_msg.upper()} ka base analyze ho raha hai... Ek min rukna bhai...")
                     report = get_on_demand_signal(user_msg)
                     reply_to_telegram(chat_id, report)
                         
     except Exception as e:
         print(f"\n❌ Listener Error: {e}")
     time.sleep(1)
-  
+    
